@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import glob
 import os
 import pickle
@@ -11,119 +5,44 @@ import nltk
 from nltk.stem import PorterStemmer
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
+from gensim.corpora import Dictionary
+from gensim.matutils import corpus2dense
+from gensim.models import LdaModel
+from gensim.models.coherencemodel import CoherenceModel
 import pandas as pd
 import numpy as np
 import pyLDAvis
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.model_selection import train_test_split
+import sklearn.metrics.pairwise
 import pyLDAvis.gensim as gensimvis
 import pyLDAvis
-
-
-# In[2]:
-
 
 wd = os.getcwd()
 print(wd)
 
-
-# Data from Kaggle
-
-# In[3]:
-
-
+# Ted Talk scripts
 main = pd.read_csv('ted_main.csv')
-print(main.shape)
-
-
-# In[4]:
-
-
 transcripts = pd.read_csv('transcripts.csv')
 
-
-# In[5]:
-
-
-print(transcripts.shape)
-
-
-# In[7]:
-
-
 data = pd.merge(main, transcripts, how='inner', on='url')
-
-
-# In[8]:
-
-
 data.count()
-
-
-# In[9]:
-
-
-print(data.shape)
-
-
-# In[15]:
-
-
+#View first lines of transcripts
 data["transcript"].head()
 
-
-# In[10]:
-
-
+#Subset data to X (transcripts) and y (manually annotated topic tags)
 X = data.as_matrix(columns=data.columns[-1:])
-
-
-# In[11]:
-
-
-print(X.shape)
-
-
-# In[12]:
-
-
 y = data.as_matrix(columns=data.columns[-5:-4])
 
-
-# In[13]:
-
-
-print(y.shape)
-print(y[:2])
-
-
 # Set aside a test set
-
-# In[14]:
-
-
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.185, random_state=42)
+#print(X_train.shape)
+#print(X_test.shape)
+#print(y_train.shape)
+#print(y_test.shape)
 
-
-# In[15]:
-
-
-print(X_train.shape)
-print(X_test.shape)
-print(y_train.shape)
-print(y_test.shape)
-
-
-# In[16]:
-
-
-print(y_train[:2])
-
-
-# In[19]:
-
-
+#Clean and unify manually annotated topic tags
 def clean_y(y):
     y_new = []
     for array in y:
@@ -139,44 +58,9 @@ def clean_y(y):
     y_new = np.array(y_new)
     return y_new
 
-
-# In[20]:
-
-
 y = clean_y(y_train)
 
-
-# In[21]:
-
-
-print(y.shape)
-
-
-# Comparison of X and y (Fits text to label?)
-
-# In[33]:
-
-
-print(y[2])
-
-
-# In[34]:
-
-
-print(X[2])
-
-
-# Clean transcripts
-
-# In[23]:
-
-
-print(X)
-
-
-# In[24]:
-
-
+#Clean X: transcripts
 def clean_X(X):
     new_X = []
     for array in X:
@@ -262,36 +146,10 @@ def clean_X(X):
             
     return new_X      
 
-
-# In[25]:
-
-
 X = clean_X(X_train)
 
-
-# In[26]:
-
-
-print(len(X))
-
-
-# In[27]:
-
-
-print(X[:1])
-
-
-# Delete stop words and lemmatize
-
-# In[28]:
-
-
+#Delete stop words and lemmatize
 stop_words = set(stopwords.words('english'))
-
-
-# In[29]:
-
-
 def process_words(word_list, stop_words):
     WNL = WordNetLemmatizer()
     porter = PorterStemmer()
@@ -304,86 +162,27 @@ def process_words(word_list, stop_words):
         a.append(tmp)
     return a
 
-
-# In[35]:
-
-
 X = process_words(X, stop_words)
 
-
-# In[36]:
-
-
-#print(X[:1])
-
-
-# In[37]:
-
-
-print(len(X))
-
-
-# LDA Model
-
-# In[39]:
-
-
+########## ----------------------------------------------- LDA Model
 #Source from https://radimrehurek.com/gensim/auto_examples/tutorials/run_lda.html#sphx-glr-auto-examples-tutorials-run-lda-py
-
-# Remove rare and common tokens.
-from gensim.corpora import Dictionary
 
 # Create a dictionary representation of the documents.
 dictionary = Dictionary(X)
 
-# Filter out words that occur less than 10 documents, or more than 50% of the documents.
+## Remove rare and common tokens. Filter out words that occur less than 10 documents, or more than 50% of the documents.
 dictionary.filter_extremes(no_below=20, no_above=0.6)
-
-
-# In[177]:
-
-
-print(dictionary[4])
-print(len(dictionary))
-
-
-# In[178]:
-
-
-print((X[0]))
-
-
-# In[168]:
-
 
 # Bag-of-words representation of the documents.
 corpus = [dictionary.doc2bow(doc) for doc in X]
 
-
-# In[171]:
-
-
-from gensim.matutils import corpus2dense
-a = corpus2dense(corpus, len(dictionary))
-b = a.sum(axis=0)
-print(b)
-
-
-# In[174]:
-
-
-print(corpus[0])
-
-
-# In[113]:
-
+#Visualize corpus/BOW-representation
+C = corpus2dense(corpus, len(dictionary))
+s = C.sum(axis=0)
+#print(C)
 
 print('Number of unique tokens: %d' % len(dictionary))
 print('Number of documents: %d' % len(corpus))
-
-
-# In[196]:
-
 
 # Train LDA model.
 from gensim.models import LdaModel
@@ -395,7 +194,7 @@ passes = 20
 iterations = 400
 eval_every = None  # Don't evaluate model perplexity, takes too much time.
 
-# Make a index to word dictionary.
+# Make an index to word dictionary.
 temp = dictionary[0]  # This is only to "load" the dictionary.
 id2word = dictionary.id2token
 
@@ -411,36 +210,11 @@ model = LdaModel(
     eval_every=eval_every,
     minimum_probability=0.0)
 
-
-# In[225]:
-
-
-from sklearn.decomposition import LatentDirichletAllocation
-
-model.perplexity(corpus)
-
-
-# In[197]:
-
-
-print(model.print_topics())
-
-
-# In[198]:
-
-
-model.show_topics(num_topics=10, num_words=100, log=False, formatted=True)
-
-
-# In[227]:
-
+topic_prob = model.print_topics()
+#model.show_topics(num_topics=10, num_words=100, log=False, formatted=True)
 
 #Top terms for topic 0
-model.get_topic_terms(0, topn=10)
-
-
-# In[228]:
-
+topic_0 = model.get_topic_terms(0, topn=10)
 
 top_topics = model.top_topics(corpus)
 
@@ -448,38 +222,13 @@ top_topics = model.top_topics(corpus)
 avg_topic_coherence = sum([t[1] for t in top_topics]) / num_topics
 print('Average topic coherence: %.4f.' % avg_topic_coherence)
 
-
-# In[229]:
-
-
 from gensim.models.coherencemodel import CoherenceModel
 
-
-# In[200]:
-
-
-print(dictionary[158])
-
-
-# In[201]:
-
-
-#Topic-term matrix
+#### Topic-term matrix
 top_term = model.get_topics()
-print(top_term[:1])
+#print(top_term.shape)
 
-
-# In[202]:
-
-
-print(top_term.shape)
-
-
-# Generate word list based on word probability
-
-# In[203]:
-
-
+#Generate word list based on word probability
 def generate_wordlist(term_topic_matrix, dictionary):
     a = []
     matrix = term_topic_matrix*1000
@@ -498,21 +247,35 @@ def generate_wordlist(term_topic_matrix, dictionary):
         a.append(l)
     return a
 
+gen_word_list = generate_wordlist(top_term,dictionary)
 
-# In[204]:
+#### Document-topic matrix
+def get_doc_top_matrix(corpus, min_prob=0.0):
+    #print(len(corpus))
+    proxy = []
+    for i in range(len(corpus)):
+        tmp = model.get_document_topics(corpus[i], minimum_probability=min_prob)
+        #print(tmp)
+        tmp_2 = []
+        for item in tmp:
+            tmp_2.append(item[1:])
+        proxy.append(tmp_2)
+    return np.array(proxy)
 
+doc_top = get_doc_top_matrix(corpus, 0.0).reshape(2010,20)
 
-f = generate_wordlist(top_term,dictionary)
-print(f[0])
-#print(f[1])
+print('Topic-Term shape is ', matrix.shape)
+print('Doc-Topic shape is ', doc_top.shape)
 
+#### Visualization
+#ATTENTION VISUALIZATION is not identical with the topic order above. E.g. My topic 1 is "bacteria" containing "air" as most prominent word
+#This is topic 7 below
+#Source from https://nbviewer.jupyter.org/github/bmabey/pyLDAvis/blob/master/notebooks/pyLDAvis_overview.ipynb
+vis_data = gensimvis.prepare(model, corpus, dictionary)
+pyLDAvis.display(vis_data)
 
-# Load reference text
-
-# In[69]:
-
-
-#Load rtf_scripts
+########## ----------------------------------------------- Load reference text
+#Load Wikipedia reference texts
 def load_scripts(path):
     strings = []
     for seq_path in sorted(glob.glob(path)):
@@ -522,22 +285,9 @@ def load_scripts(path):
         strings.append(proxy)
     return strings
 
-
-# In[70]:
-
-
 ref = load_scripts(wd+"/wiki/*.txt")
 
-
-# In[71]:
-
-
-print(ref[15:16])
-
-
-# In[72]:
-
-
+#Load Wikipedia labels
 def extract_topics(filepath):
     filenames = []
     import glob, os
@@ -547,21 +297,10 @@ def extract_topics(filepath):
         filenames.append(file)
     return filenames
 
+wiki_labels = extract_topics("/Users/aliciahorsch/Anaconda/Master Thesis/wiki")
 
-# In[73]:
-
-
-topics = extract_topics("/Users/aliciahorsch/Anaconda/Master Thesis/wiki")
-print(topics)
-
-
-# Clean string
-
-# In[74]:
-
-
+# Clean Wikipedia scripts
 #Source: https://stackoverflow.com/questions/14596884/remove-text-between-and-in-python/14598135
-
 def remove_sources(test_str):
     ret = ''
     skip1c = 0
@@ -578,10 +317,6 @@ def remove_sources(test_str):
         elif skip1c == 0 and skip2c == 0:
             ret += i
     return ret
-
-
-# In[82]:
-
 
 def clean_wiki(list_of_strings):
     new = []
@@ -614,39 +349,9 @@ def clean_wiki(list_of_strings):
         new.append(clean)
     return new
 
-
-# In[83]:
-
-
 #Remove stopwords and lemmatize
 ref2 = clean_wiki(ref)
 ref2 = process_words(ref2, stop_words)
-
-
-# In[84]:
-
-
-print(ref2[67:68])
-
-
-# In[85]:
-
-
-#Parameters
-print(len(ref2))
-print(len(f))
-
-
-# Find similarity
-
-# In[205]:
-
-
-import sklearn.metrics.pairwise
-
-
-# In[206]:
-
 
 #Source: Partly from Data Processing Advanced Notebooks (D.Hendrickson)
 
@@ -704,113 +409,10 @@ def label_topics(generated_word_list, reference_word_list, num_topics, ref_topic
         c.append(la)  
     return np.array(c)
 
+topics_fin = label_topics(gen_word_list, ref2, 2, wiki_labels)
 
-# In[207]:
-
-
-p = label_topics(f, ref2, 2, topics)
-print(p.shape)
-
-
-# In[208]:
-
-
-print(y[1])
-
-
-# In[209]:
-
-
-print(X[1])
-
-
-# Doc-topic matrix
-
-# In[210]:
-
-
-doc_top = model.get_document_topics(corpus[1], minimum_probability=0.0)
-print(doc_top)
-
-
-# In[211]:
-
-
-print(len(X[0]))
-
-
-# In[129]:
-
-
-print(corpus[0])
-
-
-# In[130]:
-
-
-print(dictionary[3])
-
-
-# In[212]:
-
-
-def get_doc_top_matrix(corpus, min_prob=0.0):
-    #print(len(corpus))
-    proxy = []
-    for i in range(len(corpus)):
-        tmp = model.get_document_topics(corpus[i], minimum_probability=min_prob)
-        #print(tmp)
-        tmp_2 = []
-        for item in tmp:
-            tmp_2.append(item[1:])
-        proxy.append(tmp_2)
-    
-    return np.array(proxy)
-        
-
-
-# In[214]:
-
-
-doc_top = get_doc_top_matrix(corpus, 0.0).reshape(2010,20)
-
-
-# In[215]:
-
-
-print(doc_top[:1])
-
-
-# In[134]:
-
-
-print('Topic-Term shape is ', matrix.shape)
-print('Doc-Topic shape is ', doc_top.shape)
-
-
-# Visualization
-
-# In[ ]:
-
-
-#ATTENTION VISUALIZATION is not identical with the topic order above. E.g. My topic 1 is "bacteria" containing "air" as most prominent word
-#This is topic 7 below
-
-
-# In[94]:
-
-
-#Source from https://nbviewer.jupyter.org/github/bmabey/pyLDAvis/blob/master/notebooks/pyLDAvis_overview.ipynb
-
-vis_data = gensimvis.prepare(model, corpus, dictionary)
-pyLDAvis.display(vis_data)
-
-
-# Evaluation (Assign documents with topics and compare with manual tags)
-
-# In[216]:
-
-
+########## ----------------------------------------------- Evaluation 
+#(Assign documents with topics and compare with manual tags)
 def flag_documents(doc_top_matrix, num_flags, topic_flag_matrix):
     n = []
     for i in range(len(doc_top_matrix)):
@@ -825,28 +427,7 @@ def flag_documents(doc_top_matrix, num_flags, topic_flag_matrix):
         n.append(np.array(m))
     return np.array(n)
 
-
-# In[217]:
-
-
-end = flag_documents(doc_top, 2, p)
-print(end.shape)
-
-
-# In[218]:
-
-
-print(end)
-
-
-# In[221]:
-
-
-print(y)
-
-
-# In[222]:
-
+end = flag_documents(doc_top, 2, topics_fin)
 
 def evaluation(y_lda, y):
     counter = 0
@@ -856,10 +437,6 @@ def evaluation(y_lda, y):
         else:
             continue
     return (counter/len(y_lda))
-
-
-# In[223]:
-
 
 accuracy = evaluation(end, y)
 print(accuracy)
