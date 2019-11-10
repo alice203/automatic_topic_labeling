@@ -19,8 +19,9 @@ import sklearn.metrics.pairwise
 import pyLDAvis.gensim as gensimvis
 import pyLDAvis
 
+path = "/Users/aliciahorsch/Anaconda/Master Thesis/"
+wd = os.chdir(path)
 wd = os.getcwd()
-print(wd)
 
 # Ted Talk scripts
 main = pd.read_csv('ted_main.csv')
@@ -59,6 +60,128 @@ def clean_y(y):
     return y_new
 
 y = clean_y(y_train)
+
+#EDA of main corpus
+def min_tags(y):
+    mi = 100
+    i = 0 
+    for index, item in enumerate(y):
+        if len(item) < mi:
+            mi = len(item)
+            i = index
+        else:
+            continue
+    return i, mi
+
+def max_tags(y):
+    ma = 0
+    i = 0
+    for index,item in enumerate(y):
+        if len(item) > ma:
+            ma = len(item)
+            i = index
+        else:
+            continue
+    return i, ma
+
+#How many tags per transcript?
+index_mi, mi = min_tags(y)
+index_ma, ma = max_tags(y)
+print(mi)
+print(ma)
+
+def create_frequency_table(tags):
+    dic = {}    
+    #Unpack list
+    new_list = []
+    for l in tags:
+        for tag in l:
+            if tag in new_list:
+                continue
+            else:
+                new_list.append(tag)    
+    #Create dictionary
+    index = 0
+    for item in new_list:
+        dic[item] = index
+        index += 1        
+    #Create frequency table
+    table = np.zeros((len(dic)))
+    for l in tags:
+        for tag in l:
+            table[dic[tag]] += 1   
+    nl = sorted(new_list)   
+    return nl, dic, table
+
+#Frequency table of tags
+unique_tags, dic, ft = create_frequency_table(y)
+print(ft)
+
+#Number of total tags
+tt = int(ft.sum())
+print(tt)
+#Average occurence of topic
+ao = ft.mean()
+#print(ao)
+
+#Create reverse dictionary
+def reverse_dic(dictionary):
+    dic_new = {}
+    for key, value in dictionary.items():
+        dic_new[value] = key
+        
+    return dic_new
+
+rev_dic = reverse_dic(dic)
+
+def most_used_tags(frequency_table, reverse_dictionary, number):
+    l = []
+    for item in range(number):
+        index = frequency_table.argmax()
+        print(index)
+        l.append(index)
+        frequency_table[index] = 0
+    #Decode
+    decode = []
+    for i in l:
+        d = reverse_dictionary[i]
+        decode.append(d)
+    return decode
+
+three_most_used = most_used_tags(ft, rev_dic,3)
+print(three_most_used)
+
+
+# Create a subset of observations with more balanced classes
+def create_subset(X, y, frequency_table, dictionary, thresh, limit):
+    keep = []
+    for index in range(len(X)):
+        tmp = y[index]
+        count = []
+        for element in tmp:
+            decode = dictionary[element]
+            #print(frequency_table[decode])
+            if frequency_table[decode] < thresh:
+                count.append(1)
+            else:
+                count.append(0)
+            
+        if sum(count) > 0:
+            keep.append(index)
+        else:
+            continue            
+    return keep
+
+k = create_subset(X_train,y,ft,dic,20,100)
+
+X_new = X_train[k]
+#print(len(X_new))
+y_new = y_train[k]
+#print(len(y_new))
+
+y_2 = clean_y(y_new)
+#print(y_2)
+nl, _, ft2 = create_frequency_table(y_2)
 
 #Clean X: transcripts
 def clean_X(X):
@@ -146,7 +269,7 @@ def clean_X(X):
             
     return new_X      
 
-X = clean_X(X_train)
+X = clean_X(X_new)
 
 #Delete stop words and lemmatize
 stop_words = set(stopwords.words('english'))
@@ -438,6 +561,6 @@ def evaluation(y_lda, y):
             continue
     return (counter/len(y_lda))
 
-accuracy = evaluation(end, y)
+accuracy = evaluation(end, y_2)
 print(accuracy)
 
