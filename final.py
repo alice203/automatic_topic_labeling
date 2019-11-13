@@ -22,6 +22,7 @@ import pyLDAvis
 wd = os.getcwd()
 print(wd)
 
+######### ----------------------------------------------- Load data
 # Ted Talk scripts
 main = pd.read_csv('ted_main.csv')
 transcripts = pd.read_csv('transcripts.csv')
@@ -54,11 +55,74 @@ def clean_y(y):
             clean = clean.lower()
             clean = clean.split() #list of words
             y_new.append(clean)
-
     y_new = np.array(y_new)
     return y_new
 
 y = clean_y(y_train)
+
+#Unify labels
+def unify(y):
+    new = []
+    for liste in y:
+        tmp = []
+        for item in liste:
+            #print(item)
+            if item == "farming":
+                tmp.append("agriculture")
+                continue
+            if item == "charter of compassion":
+                tmp.append("compassion")
+                continue
+            if item == "funny":
+                tmp.append("humor")
+                continue
+            if item == "illness":
+                tmp.append("disease")
+                continue
+            if item == "vocals":
+                tmp.append("singer")
+                continue
+            if item == "ted books":
+                tmp.append("singer")
+                continue
+            if item == "ted books":
+                continue
+            if item == "ted brain trust":
+                continue
+            if item == "ted en español":
+                continue
+            if item == "ted fellows":
+                continue
+            if item == "ted prize":
+                continue
+            if item == "ted residency":
+                continue
+            if item == "ted-ed":
+                continue
+            if item == "tedmed":
+                continue
+            if item == "tednyc":
+                continue
+            if item == "tedx":
+                continue
+            if item == "tedyouth":
+                continue            
+            else:
+                tmp.append(item)
+        new.append(tmp)      
+    #Delete doubles
+    new2 = []
+    for ls in new:
+        prx = []
+        for element in ls:
+            if element in prx:
+                continue
+            else:
+                prx.append(element)
+        new2.append(prx)    
+    return new2
+
+y = unify(y)
 
 #Clean X: transcripts
 def clean_X(X):
@@ -81,7 +145,6 @@ def clean_X(X):
             clean = clean.replace('-', " ")
             clean = clean.replace('(', " ")
             clean = clean.replace(')', " ")
-
             #To be
             clean = clean.replace("i'm", "i am")
             clean = clean.replace("you're", "you are")
@@ -91,7 +154,6 @@ def clean_X(X):
             clean = clean.replace("we're", "we are")
             clean = clean.replace("they're", "they are")
             clean = clean.replace("it's", "it is")
-
             #Auxilary words
             clean = clean.replace("i'd", "i would")
             clean = clean.replace("you'd", "you would")
@@ -99,13 +161,11 @@ def clean_X(X):
             final = clean.replace("she'd", "she would")
             final = final.replace("we'd", "we would")
             final = final.replace("they'd", "they would")
-
             #To have
             final = final.replace("i've", "i have")
             final = final.replace("you've", "you have")
             final = final.replace("we've", "we have")
             final = final.replace("they've", "they have")
-
             #Future
             final = final.replace("i'll", "i will")
             final = final.replace("you'll", "you will")
@@ -114,7 +174,6 @@ def clean_X(X):
             final = final.replace("it'll", "it will")
             final = final.replace("he'll", "he will")
             final = final.replace("she'll", "she will")
-
             #Negative
             final = final.replace("didn't", "did not")
             final = final.replace("don't", "do not")
@@ -127,23 +186,19 @@ def clean_X(X):
             final = final.replace("couldn't", "could not")
             final = final.replace("haven't", "have not")
             final = final.replace("hasn't", "has not")
-
             #Questions
             final = final.replace("what's", "what is")
             final = final.replace("where's", "where is")
             final = final.replace("who's", "who is")
             final = final.replace("how's", "how is")
             final = final.replace("why's", "why is")
-
             #Others
             final = final.replace("that's", "that is")
             final = final.replace("there's", "there is")
             final = final.replace("here's", "here is")
             final = final.replace("'", " ")
-            final = final.split()
-            
-            new_X.append(final)
-            
+            final = final.split()           
+            new_X.append(final)            
     return new_X      
 
 X = clean_X(X_train)
@@ -163,6 +218,80 @@ def process_words(word_list, stop_words):
     return a
 
 X = process_words(X, stop_words)
+
+# Load Wikipedia reference texts
+def load_scripts(path):
+    strings = []
+    for seq_path in sorted(glob.glob(path)):
+        #print(seq_path)
+        proxy = open(seq_path).read()
+        proxy = proxy.replace('\n', " ")
+        strings.append(proxy)
+    return strings
+
+ref = load_scripts(wd+"/wiki/*.txt")
+
+#Load Wikipedia labels
+def extract_topics(filepath):
+    filenames = []
+    import glob, os
+    os.chdir(filepath)
+    for file in sorted(glob.glob("*.txt")):
+        file = file.replace(".txt","")
+        filenames.append(file)
+    return filenames
+
+wiki_labels = extract_topics("/Users/aliciahorsch/Anaconda/Master Thesis/wiki")
+
+# Clean Wikipedia scripts
+#Source: https://stackoverflow.com/questions/14596884/remove-text-between-and-in-python/14598135
+def remove_sources(test_str):
+    ret = ''
+    skip1c = 0
+    skip2c = 0
+    for i in test_str:
+        if i == '[':
+            skip1c += 1
+        elif i == '(':
+            skip2c += 1
+        elif i == ']' and skip1c > 0:
+            skip1c -= 1
+        elif i == ')'and skip2c > 0:
+            skip2c -= 1
+        elif skip1c == 0 and skip2c == 0:
+            ret += i
+    return ret
+
+def clean_wiki(list_of_strings):
+    new = []
+    for string in list_of_strings:
+        clean = string.lower()
+        clean = clean.replace(",", " ")
+        clean = clean.replace(".", " ")
+        clean = clean.replace("!", " ")
+        clean = clean.replace("?", " ")
+        clean = clean.replace(";", " ")
+        clean = clean.replace(":", " ")
+        clean = clean.replace('"', " ")
+        clean = clean.replace("'", " ")
+        clean = clean.replace('–', " ")
+        clean = clean.replace('-', " ")
+        clean = clean.replace('(', " ")
+        clean = clean.replace(')', " ")        
+        #Remove wiki-words
+        clean = clean.replace("main article", "")
+        clean = clean.replace("[citation needed]", "")
+        clean = clean.replace("see also", "")
+        clean = clean.replace("[edit]", "")
+        #Delete Sources
+        clean = remove_sources(clean)
+        clean = clean.split()       
+        new.append(clean)
+    return new
+
+#Remove stopwords and lemmatize
+ref2 = clean_wiki(ref)
+ref2 = process_words(ref2, stop_words)
 
 ########## ----------------------------------------------- LDA Model
 #Source from https://radimrehurek.com/gensim/auto_examples/tutorials/run_lda.html#sphx-glr-auto-examples-tutorials-run-lda-py
@@ -273,85 +402,6 @@ print('Doc-Topic shape is ', doc_top.shape)
 #Source from https://nbviewer.jupyter.org/github/bmabey/pyLDAvis/blob/master/notebooks/pyLDAvis_overview.ipynb
 vis_data = gensimvis.prepare(model, corpus, dictionary)
 pyLDAvis.display(vis_data)
-
-########## ----------------------------------------------- Load reference text
-#Load Wikipedia reference texts
-def load_scripts(path):
-    strings = []
-    for seq_path in sorted(glob.glob(path)):
-        #print(seq_path)
-        proxy = open(seq_path).read()
-        proxy = proxy.replace('\n', " ")
-        strings.append(proxy)
-    return strings
-
-ref = load_scripts(wd+"/wiki/*.txt")
-
-#Load Wikipedia labels
-def extract_topics(filepath):
-    filenames = []
-    import glob, os
-    os.chdir(filepath)
-    for file in sorted(glob.glob("*.txt")):
-        file = file.replace(".txt","")
-        filenames.append(file)
-    return filenames
-
-wiki_labels = extract_topics("/Users/aliciahorsch/Anaconda/Master Thesis/wiki")
-
-# Clean Wikipedia scripts
-#Source: https://stackoverflow.com/questions/14596884/remove-text-between-and-in-python/14598135
-def remove_sources(test_str):
-    ret = ''
-    skip1c = 0
-    skip2c = 0
-    for i in test_str:
-        if i == '[':
-            skip1c += 1
-        elif i == '(':
-            skip2c += 1
-        elif i == ']' and skip1c > 0:
-            skip1c -= 1
-        elif i == ')'and skip2c > 0:
-            skip2c -= 1
-        elif skip1c == 0 and skip2c == 0:
-            ret += i
-    return ret
-
-def clean_wiki(list_of_strings):
-    new = []
-    for string in list_of_strings:
-        clean = string.lower()
-        clean = clean.replace(",", " ")
-        clean = clean.replace(".", " ")
-        clean = clean.replace("!", " ")
-        clean = clean.replace("?", " ")
-        clean = clean.replace(";", " ")
-        clean = clean.replace(":", " ")
-        clean = clean.replace('"', " ")
-        clean = clean.replace("'", " ")
-        clean = clean.replace('–', " ")
-        clean = clean.replace('-', " ")
-        clean = clean.replace('(', " ")
-        clean = clean.replace(')', " ")
-        
-        #Remove wiki-words
-        clean = clean.replace("main article", "")
-        clean = clean.replace("[citation needed]", "")
-        clean = clean.replace("see also", "")
-        clean = clean.replace("[edit]", "")
-
-
-        #Delete Sources
-        clean = remove_sources(clean)
-        clean = clean.split()
-        
-        new.append(clean)
-    return new
-
-#Remove stopwords and lemmatize
-ref2 = clean_wiki(ref)
-ref2 = process_words(ref2, stop_words)
 
 #Source: Partly from Data Processing Advanced Notebooks (D.Hendrickson)
 
