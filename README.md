@@ -1,4 +1,4 @@
-# masterthesis
+# master thesis
 
 This repository contains the code for my final research project to complete my Master’s degree. 
 
