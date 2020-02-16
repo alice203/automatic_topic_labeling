@@ -16,4 +16,4 @@ Keywords: Latent Dirichlet Allocation, audio transcripts, text mining, natural l
 
 This research analysis is based on two text corpora. The main corpus, a collection of TED talk transcripts is available on Kaggle. The reference corpus, a collection of Wikipedia articles, was manually scraped from Wikipedia based on the topics available on the TED talk website. 
 
-The corresponding research paper is available under:
+The corresponding research paper is available on request.
